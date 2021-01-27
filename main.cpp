@@ -5,9 +5,12 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <sstream>
 
 using namespace date;
 using namespace std::chrono;
+
+using publicHolidayInfo = std::vector<std::pair<date::sys_days, std::string>>;
 
 // https://github.com/HowardHinnant/date/wiki/FAQ
 constexpr year_month_day operator+(const year_month_day& ymwd, const date::days& dd) noexcept
@@ -16,7 +19,7 @@ constexpr year_month_day operator+(const year_month_day& ymwd, const date::days&
 }
 
 // https://github.com/HowardHinnant/date/wiki/Boost-datetime-Examples-Translated#Print_Holidays
-std::vector<std::pair<date::sys_days, std::string>> generate_holidays(date::year y)
+publicHolidayInfo generate_holidays(const date::year &y)
 {
     std::vector<std::pair<date::sys_days, std::string>> holidays;
     // https://github.com/KDE/kholidays/blob/master/holidays/plan2/holiday_tr_en-gb
@@ -52,54 +55,77 @@ std::vector<std::pair<date::sys_days, std::string>> generate_holidays(date::year
 
 int main()
 {
-    std::cout << "📅🎅🥳🎉 Welcome to the Holiday Calendar 🎊🍬🐄🌞\n";
+    // TODO: Make sure Unicode characters are displayed properly on non-Linux operating systems
+    #ifdef __linux__
+        std::cout << "📅🎅🥳🎉 Welcome to the 🇹🇷 Holiday Calendar 🎊🍬🐄🌞\n";
+    #elif _WIN32
+        std::wcout << L"📅🎅🥳🎉 Welcome to the 🇹🇷 Holiday Calendar 🎊🍬🐄🌞\n";
+    #else
+        std::cout << "📅🎅🥳🎉 Welcome to the 🇹🇷 Holiday Calendar 🎊🍬🐄🌞\n";
+    #endif
+
     // TODO: check for bad/nonexistent dates like 2021-06-31
     // TODO: add supoort for more dates like 2021/01/01, 2021.01.01, 2021 01 01, 31.12.2021...
-    year_month_day day1;
+    year_month_day beginDate;
     std::cout << "Please write first date as YYYY-MM-DD: ";
-    std::cin >> parse("%F", day1);
+    std::cin >> parse("%F", beginDate);
 
-    year_month_day day2;
+    year_month_day endDate;
     // TODO: second cin not working normally, why?
     // https://stackoverflow.com/questions/19390059/program-skips-second-cin/24376769
     std::cin.get();
     std::cout << "Please write second date as same format: ";
-    std::cin >> parse("%F", day2);
+    std::cin >> parse("%F", endDate);
 
-    //constexpr auto startDate = 2020_y/jan/1;
-    //auto endDate = 2021_y/jan/1;
-
-    auto x = day1;
+    auto x = beginDate;
 
     std::vector<date::sys_days> days{};
-    while (x <= day2)
+    while(x <= endDate)
     {
         days.push_back(x);
         x = year_month_day{x + date::days{1}};
     }
 
     //define a collection of holidays fixed by month and day
-    std::vector<std::pair<date::sys_days, std::string>> holidays{};
+    publicHolidayInfo holidays{};
 
-    year dt1 = day1.year();
-    year dt2 = day2.year();
-    while(dt1 <= dt2)
+    year startYearHolidays = beginDate.year();
+    const year endYearHolidays = endDate.year();
+    while(startYearHolidays <= endYearHolidays)
     {
-        auto temp = generate_holidays(dt1);
+        auto temp = generate_holidays(startYearHolidays);
         holidays.insert( holidays.end(), temp.begin(), temp.end() );
-        ++dt1;
+        ++startYearHolidays;
     }
 
     int holidaySize{};
-    std::cout << "Here are your holidays:\n";
-    for (const auto& d : holidays)
+    std::vector<std::string> holidayDateAndName{};
+    for(const auto& d : holidays)
     {
         // https://stackoverflow.com/questions/44831793/what-is-the-difference-between-vector-back-and-vector-end
-        if ((d.first <= days.back()) && (d.first >= days.front()))
+        if((d.first <= days.back()) && (d.first >= days.front()))
         {
-            std::cout << format("%d.%m.%Y", d.first) << " " << weekday{d.first} << " - " << d.second << "\n";
+            std::stringstream ss;
+            ss << format("%d.%m.%Y", d.first) << " " << weekday{d.first} << " - " << d.second;
+            holidayDateAndName.push_back(ss.str());
             ++holidaySize;
         }
     }
-    std::cout << "Number Holidays: " << holidaySize << '\n';
+    if(holidaySize == 0)
+    {
+        std::cout << "Sorry, there are no holidays in the date ranges you entered.\n";
+        if(beginDate > endDate)
+        {
+            std::cout << "Please make sure to enter the start date first and then the end date.\n";
+        }
+    }
+    else
+    {
+        std::cout << "Here are your holidays:\n";
+        for(const auto& i : holidayDateAndName)
+        {
+            std::cout << i << '\n';
+        }
+        std::cout << "Number Holidays: " << holidaySize << '\n';
+    }
 }
