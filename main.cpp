@@ -77,13 +77,10 @@ int main()
     std::cout << "Please write second date as same format: ";
     std::cin >> parse("%F", endDate);
 
-    auto x = beginDate;
-
     std::vector<date::sys_days> days{};
-    while(x <= endDate)
+    for(auto i{beginDate}; i <= endDate; i = year_month_day{i + date::days{1}})
     {
-        days.push_back(x);
-        x = year_month_day{x + date::days{1}};
+        days.push_back(i);
     }
 
     //define a collection of holidays fixed by month and day
